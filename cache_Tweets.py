@@ -4,11 +4,7 @@ from requests_oauthlib import OAuth1
 import os
 import json
 import TwitterSecrets
-
-# %%
-CACHE_FILENAME = "Twitter_cache.json"
-CACHE_DICT = {}
-NUM_CACHE_TWEETS = 100
+from datetime import datetime, timezone
 
 
 # %%
@@ -53,7 +49,8 @@ def open_cache(CACHE_FILENAME):
         cache_dict = {}
     return cache_dict
 
-def save_cache(cache_dict):
+
+def save_cache(cache_dict, CACHE_FILENAME):
     ''' saves the current state of the cache to disk
     Parameters
     ----------
@@ -79,6 +76,7 @@ def make_request(url, params):
         raise Exception(response.status_code, response.text)
     return response.json()
 
+
 def construct_unique_key(baseurl, params):
     ''' constructs a key that is guaranteed to uniquely and 
     repeatably identify an API request by its baseurl and params
@@ -98,10 +96,11 @@ def construct_unique_key(baseurl, params):
     for k in params.keys():
         param_strings.append(f'{k}_{params[k]}')
     param_strings.sort()
-    unique_key = baseurl + connector +  connector.join(param_strings)
+    unique_key = baseurl + connector + connector.join(param_strings)
     return unique_key
 
-def make_request_with_cache(baseurl, params):
+
+def make_request_with_cache(baseurl, params, CACHE_DICT, CACHE_FILENAME):
     '''Check the cache for a saved result for this baseurl+params
     combo. If the result is found, return it. Otherwise send a new 
     request, save it, then return it.
@@ -131,7 +130,7 @@ def make_request_with_cache(baseurl, params):
     else:
         print("cache miss!", request_key)
         CACHE_DICT[request_key] = make_request(baseurl, params)
-        save_cache(CACHE_DICT)
+        save_cache(CACHE_DICT, CACHE_FILENAME)
         json_response = CACHE_DICT[request_key]
         tweets_dic = json_response['data']
         tweets_lst = []
@@ -141,6 +140,7 @@ def make_request_with_cache(baseurl, params):
             tweet = Tweet(tweet_id, text)
             tweets_lst.append(tweet)
         return tweets_lst
+
 
 # %%
 class Tweet:
@@ -160,15 +160,22 @@ class Tweet:
 
 def main():
     # %%
+    CACHE_FILENAME = "Twitter_cache.json"
+    CACHE_DICT = open_cache(CACHE_FILENAME)
+
+    NUM_CACHE_TWEETS = 100
+    QUERY_TEST_LST = ["#blackfriday", "#thanksgiving"]
     search_url = "https://api.twitter.com/2/tweets/search/recent"
-    query_params = {'query': '#MarchMadness'}
 
-    tweets = make_request_with_cache(search_url, query_params)
-
-    print(tweets[0].text)
-    # tweets = json_response['data']
-
-    # print(json.dumps(json_response, indent=4, sort_keys=True))
+    for query in QUERY_TEST_LST:
+        SEARCH_QUERY = query
+        query_params = {'query': SEARCH_QUERY, "max_results": NUM_CACHE_TWEETS}
+        tweets = make_request_with_cache(
+            search_url, query_params, CACHE_DICT, CACHE_FILENAME)
+        print("First 10 Tweets using the query: ", SEARCH_QUERY)
+        for i in range(10):
+            print(tweets[i].text)
+        print(" ")
 
 
 if __name__ == "__main__":
