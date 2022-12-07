@@ -41,21 +41,23 @@ def make_request_nyt_with_cache(baseurl, params, CACHE_DICT, CACHE_FILENAME):
 
 
 def main():
-    # %%
     CACHE_FILENAME = "NYT_cache.json"
     CACHE_DICT = open_cache(CACHE_FILENAME)
+
+    NUM_REQUESTED = 100
+    PAGE_NUM = 100 // 10
+    pages = []  # lst of page number, each page contains 10 results
+    for i in range(PAGE_NUM):
+        pages.append(str(i+1))
 
     base_url_nyt = "https://api.nytimes.com/svc/search/v2/articlesearch.json"
     query = "thanksgiving"
 
-    page = ['1', '2', '3', '4', '5'] # each page contains 10 results 
-    query_params = {'title': query,
-                    'document_type': "article", 'page': '2', 'sort': 'relevance', 'api-key': NYT_keys}
-
-    nyt_articles = make_request_nyt_with_cache(
-        base_url_nyt, query_params, CACHE_DICT, CACHE_FILENAME)
-
-    print(len(nyt_articles['response']['docs']))
+    for page in pages:
+        query_params = {'title': query,
+                        'document_type': "article", 'page': page, 'sort': 'relevance', 'api-key': NYT_keys}
+        nyt_articles = make_request_nyt_with_cache(
+            base_url_nyt, query_params, CACHE_DICT, CACHE_FILENAME)
 
 
 if __name__ == "__main__":
