@@ -1,19 +1,6 @@
 import csv
 import statistics
 
-filename = "300_Twitter_accounts.csv"
-with open(filename, 'r') as f:
-    dict_reader = csv.DictReader(f)
-    list_of_dict = list(dict_reader)
-f.close()
-
-correct = ["yes", 'y', 'yup', 'sure']
-location = ["NY", "DC", "Unknown"]
-
-
-# remove empty dict
-list_of_dict = [item for item in list_of_dict if item]
-
 
 def name_unknwon_loc(lst_account_dict):
     for dic in lst_account_dict:
@@ -52,15 +39,9 @@ def standardize_loc(lst_account_dic):
             result_lst.append(account)
     return result_lst
 
-
-lst_account_dic = name_unknwon_loc(list_of_dict)
-
-# print(get_location_list(lst_account_dic))
-lst_account_dic = standardize_loc(lst_account_dic)
-print("The number of accounts in NY/DC is", len(lst_account_dic))
-
-
 # divide the accounts into two parts - low vs. high popularity
+
+
 def eva_popularity(lst_account_dic):
     follower_lst = [dic["All followers"] for dic in lst_account_dic]
     median_pop = statistics.median([int(i) for i in follower_lst])
@@ -73,17 +54,21 @@ def eva_popularity(lst_account_dic):
     return lst_account_dic
 
 
-lst_account_dic = eva_popularity(lst_account_dic)
-
-# high_pop = 0
-# low_pop = 0
-# for dic in lst_account_dic:
-#     if dic['popularity'] == 'high':
-#         high_pop += 1
-#     else:
-#         low_pop += 1
-# print(high_pop)
-# print(low_pop)
+def group_accounts(lst_account_dic):
+    ny = dict.fromkeys(['ny_low', 'ny_high'], [])
+    dc = dict.fromkeys(['dc_low', 'dc_high'], [])
+    for account_dic in lst_account_dic:
+        if account_dic['Location'] == "NY":
+            if account_dic['popularity'] == "low":
+                ny['ny_low'].append(account_dic['Name'])
+            else:
+                ny['ny_high'].append(account_dic['Name'])
+        else:
+            if account_dic['popularity'] == "low":
+                dc['dc_low'].append(account_dic['Name'])
+            else:
+                dc['dc_high'].append(account_dic['Name'])
+    return ny, dc
 
 
 class Account():
@@ -118,31 +103,41 @@ class Node():
     def print_tree(self):
         spaces = ' ' * self.get_level() * 2
         prefix = spaces + "|__" if self.parent else ""
-        print(prefix + self.val)
+        if type(self.val) != str:
+            print(prefix + ", ".join(self.val))
+        else:
+            print(prefix + self.val)
         if self.children:
             for child in self.children:
                 child.print_tree()
-
-    def traverse(self, prefix='', bend=''):
-        print(f'{prefix}{bend}{self.account}')
-        if self.left:
-            if bend == '+-':
-                prefix = prefix + '| '
-            elif bend == '`-':
-                prefix = prefix + '  '
-            self.left.traverse(prefix, bend="+-")
+        else:
+            pass
 
 
-def build_account_tree():
+def build_account_tree(ny_accounts, dc_accounts):
     root = Node("Popular Accounts")
 
     ny = Node("NY")
-    ny.add_child(Node("Low Popularity"))
-    ny.add_child(Node("High Popularity"))
+    ny_low_pop = Node("Low Popularity")
+    ny.add_child(ny_low_pop)
+    ny_high_pop = Node("High Popularity")
+    ny.add_child(ny_high_pop)
+
+    ny_low_account = Node(ny_accounts['ny_low'])
+    ny_low_pop.add_child(ny_low_account)
+    ny_high_account = Node(ny_accounts['ny_high'])
+    ny_high_pop.add_child(ny_high_account)
 
     dc = Node("DC")
-    dc.add_child(Node("Low Popularity"))
-    dc.add_child(Node("High Popularity"))
+    dc_low_pop = Node("Low Popularity")
+    dc.add_child(dc_low_pop)
+    dc_high_pop = Node("High Popularity")
+    dc.add_child(dc_high_pop)
+
+    dc_low_account = Node(dc_accounts['dc_low'])
+    dc_low_pop.add_child(dc_low_account)
+    dc_high_account = Node(dc_accounts['dc_high'])
+    dc_high_pop.add_child(dc_high_account)
 
     root.add_child(ny)
     root.add_child(dc)
@@ -150,6 +145,37 @@ def build_account_tree():
     return root
 
 
+def get_twitter_username(name, lst_account_dic):
+    for account in lst_account_dic:
+        if account['Name'] == name:
+            return account['Screen name']
+        else:
+            pass
+
+
 if __name__ == '__main__':
-    root = build_account_tree()
+    correct = ["yes", 'y', 'yup', 'sure']
+    location = ["NY", "DC", "Unknown"]
+
+    filename = "300_Twitter_accounts.csv"
+    with open(filename, 'r') as f:
+        dict_reader = csv.DictReader(f)
+        list_of_dict = list(dict_reader)
+    f.close()
+
+    # remove empty dict
+    list_of_dict = [item for item in list_of_dict if item]
+
+    lst_account_dic = name_unknwon_loc(list_of_dict)
+
+    # print(get_location_list(lst_account_dic))
+    lst_account_dic = standardize_loc(lst_account_dic)
+    print("The number of accounts in NY/DC is", len(lst_account_dic))
+
+    lst_account_dic = eva_popularity(lst_account_dic)
+    ny, dc = group_accounts(lst_account_dic)
+
+    root = build_account_tree(ny, dc)
     root.print_tree()
+
+    print(get_twitter_username("Ezra Klein", lst_account_dic))
