@@ -3,6 +3,9 @@ import requests
 from requests_oauthlib import OAuth1
 import os
 import json
+import nltk
+from nltk.corpus import stopwords
+import re
 import Secrets
 from utility import *
 from userTree import *
@@ -78,16 +81,36 @@ def get_user_id(json_response, username):
             pass
 
 
-# class Tweet:
+def word_freq(tweets_lst, n):
+    stopword = stopwords.words("english")
+    words_lst = []
+    for tweet in tweets_lst:
+        for word in tweet.split():
+            word = word.lower()
+            word = re.sub(r'[^\w\s]', '', word)
+            if word not in stopword and len(word) > 0:
+                words_lst.append(word)
+            else:
+                pass
 
-#     def __init__(self, tweet_id="No ID", text="No Text", json=None):
-#         self.tweet_id = tweet_id
-#         self.text = text
-#         self.json = json
+    word_freq_dic = dict()
+    for word in words_lst:
+        word_freq_dic[word] = word_freq_dic.get(word, 0) + 1
+    word_freq_dic = dict(
+        sorted(word_freq_dic.items(), key=lambda item: item[1], reverse=True))
+    word_top_n = [list(word_freq_dic.keys())[i] for i in range(n)]
+    return word_top_n
 
-#         if self.json != None:
-#             self.tweet_id = json['tweet_id']
-#             self.text = json['text']
+    # class Tweet:
+
+    #     def __init__(self, tweet_id="No ID", text="No Text", json=None):
+    #         self.tweet_id = tweet_id
+    #         self.text = text
+    #         self.json = json
+
+    #         if self.json != None:
+    #             self.tweet_id = json['tweet_id']
+    #             self.text = json['text']
 
 
 class TwitterUser:
@@ -105,8 +128,8 @@ def main():
     TWEETS_CACHE_DICT = open_cache(TWEETS_CACHE_FILENAME)
 
     NUM_CACHE_TWEETS = 100
-    TWEETS_QUERY_TEST_LST = ["#blackfriday", "#thanksgiving"]
-    search_url = "https://api.twitter.com/2/tweets/search/recent"
+    # TWEETS_QUERY_TEST_LST = ["#blackfriday", "#thanksgiving"]
+    # search_url = "https://api.twitter.com/2/tweets/search/recent"
 
     # search Tweets using keywords
     # for query in TWEETS_QUERY_TEST_LST:
@@ -139,7 +162,9 @@ def main():
     user_timeline_json = make_request_with_cache(
         user_timeline_url, timeline_query_para, user_timeline_cache_dic, user_timeline_cache_filename)
     user_tweets = get_tweets(user_timeline_json)  # a list of Tweets
+    word_top_n = word_freq(user_tweets, n=10)
 
+    # print(word_top_n)
     # print(user_timeline_json['data'][0].keys())
     # print(get_user_id(user_info_json, "nytimes"))
 
