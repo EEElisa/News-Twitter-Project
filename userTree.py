@@ -44,10 +44,10 @@ def standardize_loc(lst_account_dic):
 
 def eva_popularity(lst_account_dic):
     follower_lst = [dic["All followers"] for dic in lst_account_dic]
-    median_pop = statistics.median([int(i) for i in follower_lst])
-    # print("median populatiry is", median_pop)
+    median_pop = int(statistics.median([int(i) for i in follower_lst]))
     for account in lst_account_dic:
-        if int(account['All followers']) <= median_pop:
+        followers = int(account['All followers'])
+        if followers <= median_pop:
             account['popularity'] = 'low'
         else:
             account['popularity'] = 'high'
@@ -55,8 +55,14 @@ def eva_popularity(lst_account_dic):
 
 
 def group_accounts(lst_account_dic):
-    ny = dict.fromkeys(['ny_low', 'ny_high'], [])
-    dc = dict.fromkeys(['dc_low', 'dc_high'], [])
+    ny = {}
+    ny['ny_low'] = []
+    ny['ny_high'] = []
+
+    dc = {}
+    dc['dc_low'] = []
+    dc['dc_high'] = []
+
     for account_dic in lst_account_dic:
         if account_dic['Location'] == "NY":
             if account_dic['popularity'] == "low":
@@ -68,18 +74,8 @@ def group_accounts(lst_account_dic):
                 dc['dc_low'].append(account_dic['Name'])
             else:
                 dc['dc_high'].append(account_dic['Name'])
+
     return ny, dc
-
-
-class Account():
-    def __init__(self, account=None, name=None, all_followers=None, nyt_followers=None, location=None, bio=None, popularity=None):
-        self.account = account
-        self.name = name
-        self.all_followers = all_followers
-        self.nyt_followers = nyt_followers
-        self.location = location
-        self.bio = bio
-        self.popularity = None
 
 
 class Node():
@@ -112,6 +108,22 @@ class Node():
                 child.print_tree()
         else:
             pass
+
+    def search_accounts(self, conditions):
+        loc = conditions[0]
+        pop = conditions[1]
+        if loc == "NY":
+            ny = self.children[0]
+            if pop == "low":
+                return ny.children[0].children[0].val
+            else:
+                return ny.children[1].children[0].val
+        else:
+            dc = self.children[1]
+            if pop == "low":
+                return dc.children[0].children[0].val
+            else:
+                return dc.children[1].children[0].val
 
 
 def build_account_tree(ny_accounts, dc_accounts):
@@ -169,13 +181,19 @@ if __name__ == '__main__':
     lst_account_dic = name_unknwon_loc(list_of_dict)
 
     # print(get_location_list(lst_account_dic))
+
     lst_account_dic = standardize_loc(lst_account_dic)
     print("The number of accounts in NY/DC is", len(lst_account_dic))
-
+    # print(lst_account_dic[0])
     lst_account_dic = eva_popularity(lst_account_dic)
     ny, dc = group_accounts(lst_account_dic)
-
     root = build_account_tree(ny, dc)
-    root.print_tree()
 
-    print(get_twitter_username("Ezra Klein", lst_account_dic))
+    print("printing the tree ...")
+    root.print_tree()
+    print(" ")
+
+    search_condition = ["DC", "high"]
+    print(root.search_accounts(search_condition))
+
+    # print(get_twitter_username("Ezra Klein", lst_account_dic))

@@ -1,4 +1,7 @@
 # %%
+import Secrets
+from utility import *
+from userTree import *
 import requests
 from requests_oauthlib import OAuth1
 import os
@@ -6,9 +9,9 @@ import json
 import nltk
 from nltk.corpus import stopwords
 import re
-import Secrets
-from utility import *
-from userTree import *
+from operator import itemgetter
+import networkx as nx
+from networkx.algorithms import community
 
 bearer_token = Secrets.Bearer_Token
 client_key = Secrets.API_Key
@@ -101,47 +104,36 @@ def word_freq(tweets_lst, n):
     word_top_n = [list(word_freq_dic.keys())[i] for i in range(n)]
     return word_top_n
 
-    # class Tweet:
 
-    #     def __init__(self, tweet_id="No ID", text="No Text", json=None):
-    #         self.tweet_id = tweet_id
-    #         self.text = text
-    #         self.json = json
+def nodes_edges(username, wordlist):
+    node_names = wordlist.append(username)
+    edges = []
+    for word in wordlist:
+        edges.append(set(username, word))
+    return node_names, edges
 
-    #         if self.json != None:
-    #             self.tweet_id = json['tweet_id']
-    #             self.text = json['text']
+
+def build_graph(nodes, edges):
+    G = nx.Graph()
+    G.add_nodes_from(nodes)
+    G.add_edges_from(edges)
 
 
 class TwitterUser:
-    def __init__(self, user_id="No ID", username="No User Name", name="No Name", tweets="No Tweets", json=None):
+    def __init__(self, user_id="No ID", username="No User Name", name="No Name", tweets="No Tweets", top_words="No Words", json=None):
         self.user_id = user_id
         self.username = username
         self.name = name
         self.tweets = tweets
+        self.top_words = top_words
         self.json = json
 
 
 def main():
-    # %%
-    TWEETS_CACHE_FILENAME = "Twitter_cache.json"
-    TWEETS_CACHE_DICT = open_cache(TWEETS_CACHE_FILENAME)
+    # TWEETS_CACHE_FILENAME = "Twitter_cache.json"
+    # TWEETS_CACHE_DICT = open_cache(TWEETS_CACHE_FILENAME)
 
     NUM_CACHE_TWEETS = 100
-    # TWEETS_QUERY_TEST_LST = ["#blackfriday", "#thanksgiving"]
-    # search_url = "https://api.twitter.com/2/tweets/search/recent"
-
-    # search Tweets using keywords
-    # for query in TWEETS_QUERY_TEST_LST:
-    #     SEARCH_QUERY = query
-    #     query_params = {'query': SEARCH_QUERY, "max_results": NUM_CACHE_TWEETS}
-    #     tweets_json = make_request_with_cache(
-    #         search_url, query_params, TWEETS_CACHE_DICT, TWEETS_CACHE_FILENAME)
-    #     tweets = get_tweets_result(tweets_json)
-    #     print("First 10 Tweets using the query: ", SEARCH_QUERY)
-    #     for i in range(10):
-    #         print(tweets[i].text)
-    #     print(" ")
 
     # the input is returned by get_twitter_username
     input_username = "nytimes"
@@ -164,7 +156,9 @@ def main():
     user_tweets = get_tweets(user_timeline_json)  # a list of Tweets
     word_top_n = word_freq(user_tweets, n=10)
 
-    # print(word_top_n)
+    print(word_top_n)
+    node_names, edges = nodes_edges(input_username, word_top_n)
+
     # print(user_timeline_json['data'][0].keys())
     # print(get_user_id(user_info_json, "nytimes"))
 
