@@ -37,6 +37,7 @@ def save_cache(cache_dict, CACHE_FILENAME):
     fw.write(dumped_json_cache)
     fw.close()
 
+
 def construct_unique_key(baseurl, params):
     ''' constructs a key that is guaranteed to uniquely and 
     repeatably identify an API request by its baseurl and params
@@ -58,5 +59,3 @@ def construct_unique_key(baseurl, params):
     param_strings.sort()
     unique_key = baseurl + connector + connector.join(param_strings)
     return unique_key
-
-    
