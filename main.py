@@ -11,14 +11,49 @@ import re
 from operator import itemgetter
 import networkx as nx
 from networkx.algorithms import community
+from flask import Flask, render_template, request
+
+app = Flask(__name__)
 
 bearer_token = Secrets.Bearer_Token
 client_key = Secrets.API_Key
 client_secret = Secrets.API_Key_Secret
 access_token = Secrets.Access_Token
 access_token_secret = Secrets.Access_Token_Secret
-
 NYT_keys = Secrets.NYT_key
+
+filename = "300_Twitter_accounts.csv"
+with open(filename, 'r') as f:
+    dict_reader = csv.DictReader(f)
+    list_of_dict = list(dict_reader)
+f.close()
+
+# remove empty dict
+list_of_dict = [item for item in list_of_dict if item]
+# preprocess the account dic
+lst_account_dic = name_unknwon_loc(list_of_dict)
+lst_account_dic = standardize_loc(lst_account_dic)
+print("The number of accounts in NY/DC is", len(lst_account_dic))
+
+lst_account_dic = eva_popularity(lst_account_dic)
+ny, dc = group_accounts(lst_account_dic)
+root = build_account_tree(ny, dc)
+
+# print("printing the tree ...")
+# root.print_tree()
+# print(" ")
+
+num_cache_tweets = 100
+
+users_cache_filename = "userinfo_cache.json"
+users_cache_dic = open_cache(users_cache_filename)
+user_lookup_url = "https://api.twitter.com/2/users/by"
+
+user_timeline_cache_filename = "user_timeline_cache.json"
+user_timeline_cache_dic = open_cache(user_timeline_cache_filename)
+
+nyt_cache_filename = "NYT_cache.json"
+nyt_cache_dic = open_cache(nyt_cache_filename)
 
 
 def bearer_oauth(r):
@@ -103,14 +138,14 @@ def word_freq(tweets_lst, n):
     word_freq_dic = dict(
         sorted(word_freq_dic.items(), key=lambda item: item[1], reverse=True))
     word_top_n = [list(word_freq_dic.keys())[i] for i in range(n)]
-    return word_top_n
+    return word_top_n, word_freq_dic
 
 
 def nodes_edges(username, wordlist):
     node_names = wordlist.append(username)
     edges = []
     for word in wordlist:
-        edges.append(set(username, word))
+        edges.append(set([username, word]))
     return node_names, edges
 
 
@@ -171,41 +206,51 @@ def articles_headline(json_response):
     return headlines
 
 
-def main():
-    # TWEETS_CACHE_FILENAME = "Twitter_cache.json"
-    # TWEETS_CACHE_DICT = open_cache(TWEETS_CACHE_FILENAME)
+@app.route('/')
+def index():
+    return render_template('index.html')  # just the static HTML
 
-    NUM_CACHE_TWEETS = 100
 
-    # the input is returned by get_twitter_username
-    input_username = "nytimes"
-    users_cache_filename = "userinfo_cache.json"
-    users_cache_dic = open_cache(users_cache_filename)
-    user_lookup_url = "https://api.twitter.com/2/users/by"
-    user_query_para = {"usernames": input_username, "user.fields": "id"}
+@app.route('/handle_form', methods=['POST'])
+def account_lst():
+    location = request.form["location"]
+    popularity = request.form["popularity"]
+    search_condition = [location, popularity]
+    result = root.search_accounts(search_condition)
+    n = len(result)
+    return render_template('response.html', account_list=result, n=n)
+
+
+@app.route('/get_tweets', methods=['POST'])
+def search_tweets():
+    account_idx = int(request.form['twitter_account'])
+    account_name = lst_account_dic[account_idx]['Name']
+    account = lst_account_dic[account_idx]['Screen name']
+
+    # return render_template('freq_words.html', account=account_name)
+
+    user_query_para = {"usernames": account, "user.fields": "id"}
     user_info_json = make_request_with_cache(
         user_lookup_url, user_query_para, users_cache_dic, users_cache_filename)
 
-    user_id = get_user_id(user_info_json, input_username)
-    user_timeline_cache_filename = "user_timeline_cache.json"
-    user_timeline_cache_dic = open_cache(user_timeline_cache_filename)
+    user_id = get_user_id(user_info_json, account)
     user_timeline_url = "https://api.twitter.com/2/users/{}/tweets".format(
         user_id)
     timeline_query_para = {"tweet.fields": "text",
-                           "max_results": NUM_CACHE_TWEETS}
+                           "max_results": num_cache_tweets}
     user_timeline_json = make_request_with_cache(
         user_timeline_url, timeline_query_para, user_timeline_cache_dic, user_timeline_cache_filename)
     user_tweets = get_tweets(user_timeline_json)  # a list of Tweets
-    word_top_n = word_freq(user_tweets, n=10)
 
+    word_top_n, word_freq_dic = word_freq(user_tweets, n=10)
+    return render_template('freq_words.html', account=account_name, word_list=word_top_n, word_dic=word_freq_dic)
+
+
+def main():
+    # the input is returned by get_twitter_username
+    '''
     print(word_top_n)
     node_names, edges = nodes_edges(input_username, word_top_n)
-
-    # print(user_timeline_json['data'][0].keys())
-    # print(get_user_id(user_info_json, "nytimes"))
-
-    CACHE_FILENAME = "NYT_cache.json"
-    CACHE_DICT = open_cache(CACHE_FILENAME)
 
     NUM_REQUESTED = 10
     PAGE_NUM = NUM_REQUESTED // 10
@@ -229,7 +274,9 @@ def main():
     for headline in headlines:
         print(str(i) + ". "+headline)
         i += 1
+    '''
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    app.run(debug=True)
