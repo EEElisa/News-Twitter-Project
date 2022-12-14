@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf8" />
+    <title>Who do NYT editors follow on Twitter?</title>
+    <style>
+        h1,
+        h2 {
+            text-align: center;
+        }
+
+        p {
+            text-align: center;
+        }
+
+        form {
+            text-align: center
+        }
+
+        .center {
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Who do NYT editors follow on Twitter?</h1>
+    <h2>The result of your search is ...</h2>
+    <table class="center">
+        <tr>
+            <th>Rank</th>
+            <th>Account</th>
+        </tr>
+        {% for i in range(n) %}
+        <tr>
+            <td>{{i+1}}</td>
+            <td>{{account_list[i]}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <form action="/get_tweets" method="POST">
+        <p>
+            Please choose one account to get its recent Tweets!
+            <br /><br />
+            <label for="twitter_account">Choose an account:</label>
+            <select name="twitter_account">
+                {% for i in range(n) %}
+                <option value={{i}}>{{account_list[i]}}</option>
+                {% endfor %}
+            </select>
+        </p>
+        <input type="submit" value="Submit Form" />
+        <input type="reset">
+    </form>
+
+
+
+
+
+</body>
+
+</html>

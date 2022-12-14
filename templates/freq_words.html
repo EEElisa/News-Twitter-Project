@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Top 10 most frequent words in the Twitter account you are interest in</title>
+    <link href="style.css" rel="stylesheet" type="text/css">
+    <style>
+        h1 {
+            text-align: center;
+        }
+
+        p {
+            text-align: center;
+        }
+
+        .center {
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Top 10 most frequent words in {{account}}</h1>
+    <table class="center">
+        <tr>
+            <th>Word</th>
+        </tr>
+        {% for word in word_list %}
+        <tr>
+            <td>{{word}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+
+</html>
