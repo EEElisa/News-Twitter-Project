@@ -303,14 +303,17 @@ def search_nyt():
     urls = []
     articles_dic = {}
     for page in pages:
-        query_params = {'title': search_query,
-                        'document_type': "article", 'page': page, 'sort': 'relevance', 'api-key': NYT_keys}
-        nyt_articles = make_request_nyt_with_cache(
-            nyt_search_url, query_params, nyt_cache_dic, nyt_cache_filename)
-        articles = articles_info(nyt_articles)
-        headlines.extend(list(articles.keys()))
-        urls.extend(list(articles.values()))
-        articles_dic.update(articles)
+        try:
+            query_params = {'title': search_query,
+                            'document_type': "article", 'page': page, 'sort': 'relevance', 'api-key': NYT_keys}
+            nyt_articles = make_request_nyt_with_cache(
+                nyt_search_url, query_params, nyt_cache_dic, nyt_cache_filename)
+            articles = articles_info(nyt_articles)
+            headlines.extend(list(articles.keys()))
+            urls.extend(list(articles.values()))
+            articles_dic.update(articles)
+        except:
+            pass
     n_articles = len(headlines)
     return render_template("search_nyt.html", headlines=headlines, uels=urls, articles_dic=articles_dic, n=n_articles, query=search_query)
 

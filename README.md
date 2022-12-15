@@ -21,3 +21,6 @@ You need the following packages installed.
 ## Run the Program 
 - The main program for the Flask app is main.py. 
 - The program to build, save and load tree is userTree.py. 
+
+## User Tree 
+The account information collected from "300_Twitter_accounts.csv" is used to build a tree structure. Each Node object has two attributes, val and children, of which "val" is undefined and "children" is a list. The root node;s value is "Accounts Followed by NYT editorial staff" and it has two children, a node for "NY" and a node for "DC". For each location node, there are two popularity nodes, one is for "low pop" and the other is for "high pop", which is grouped upon whether the number of followers is above or below the median value of the account followers among all the accounts in that location. The popularity nodes are leaf nodes and the value for each is a list of usernames of Twitter accounts that satisfy the search conditions specified by the user.  
