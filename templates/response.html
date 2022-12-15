@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf8" />
-    <title>Who do NYT editors follow on Twitter?</title>
+    <title>Which accounts do NYT editorial staff follow on Twitter</title>
     <style>
         h1,
         h2 {
@@ -33,11 +33,11 @@
 </head>
 
 <body>
-    <h1>Who do NYT editors follow on Twitter?</h1>
+    <h1>Which accounts do NYT editorial staff follow on Twitter?</h1>
     <h2>The result of your search is ...</h2>
     <table class="center">
         <tr>
-            <th>Rank</th>
+            <th>Index</th>
             <th>Account</th>
         </tr>
         {% for i in range(n) %}
@@ -58,14 +58,13 @@
                 {% endfor %}
             </select>
         </p>
-        <input type="submit" value="Submit Form" />
+        <input type="submit" value="Submit" />
         <input type="reset">
     </form>
-
-
-
-
-
+    <p>
+        <input type="button" value="Go back!" onclick="history.back()"><br>
+        <a href='/'>Return home</a>.
+    </p>
 </body>
 
 </html>

@@ -25,21 +25,45 @@
             border: 1px solid black;
             border-collapse: collapse;
         }
+
+        form {
+            text-align: center
+        }
     </style>
 </head>
 
 <body>
-    <h1>Top 10 most frequent words in {{account}}</h1>
-    <table class="center">
+    <h1 action="/get_nyt" method="POST">Top 10 most frequent words in {{account}}'s recent {{n_tweets}} Tweets</h1>
+    <table class="center" action="/get_nyt" method="POST">
         <tr>
             <th>Word</th>
+            <th>Occurrences</th>
         </tr>
         {% for word in word_list %}
         <tr>
             <td>{{word}}</td>
+            <td>{{word_dic[word]}}</td>
         </tr>
         {% endfor %}
     </table>
+    <form action="/get_nyt" method="POST">
+        <p>
+            Please select one keyword to search relevent New York Times articles!
+            <br /><br />
+            <label for="keyword">Choose a keyword:</label><br>
+            {% for word in word_list %}
+            <input type="radio" name="keyword" value={{word}}>{{word}}<br />
+            {% endfor %}
+        </p>
+        <label for="quantity">Number of articles you want to get (10-500):</label>
+        <input type="number" id="quantity" name="quantity" min="10" max="500">
+        <input type="submit" value="Search" />
+        <input type="reset">
+    </form>
+    <p>
+        <input type="button" value="Go back!" onclick="history.back()"><br>
+        <a href='/'>Return home</a>.
+    </p>
 </body>
 
 </html>

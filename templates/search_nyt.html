@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Search results on New York Times</title>
+    <link href="style.css" rel="stylesheet" type="text/css">
+    <style>
+        h1 {
+            text-align: center;
+        }
+
+        p {
+            text-align: center;
+        }
+
+        .center {
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid black;
+            border-collapse: collapse;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Relevant 50 articles on New York Times about "{{query}}"</h1>
+    <table class="center" style="width:75%">
+        <tr>
+            <th>Article Headline</th>
+            <th>Article Link</th>
+        </tr>
+        {% for headline in headlines %}
+        <tr>
+            <td>{{headline}}</td>
+            <td><a href={{articles_dic[headline]}}>Read the article</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+    <p>
+        <input type="button" value="Go back!" onclick="history.back()"><br>
+        <a href='/'>Return home</a>.
+    </p>
+</body>
+
+</html>
