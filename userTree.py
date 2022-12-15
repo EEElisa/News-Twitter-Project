@@ -2,8 +2,11 @@ import csv
 import statistics
 from utility import *
 
+# preprocess the file of 300 Twitter accounts that NYT editorial staff follow
+
 
 def name_unknwon_loc(lst_account_dict):
+    # name record with no location information as "unknown"
     for dic in lst_account_dict:
         if len(dic['Location']) == 0:
             dic['Location'] = "Unknown"
@@ -11,6 +14,7 @@ def name_unknwon_loc(lst_account_dict):
 
 
 def get_location_list(lst_account_dict):
+    # sort location by number of occurrences among all the accounts
     location_lst = [dict['Location'] for dict in lst_account_dict]
     result = {}
     for loc in location_lst:
@@ -24,6 +28,7 @@ def get_location_list(lst_account_dict):
 
 
 def standardize_loc(lst_account_dic):
+    # standardize location names to "NY" and "DC" considering that more than a half of accounts are located in these two areas
     ny_lst = ["New York, NY", "New York", "New York City",
               "NYC", "brooklyn", "new york", "Brooklyn"]
 
@@ -40,22 +45,30 @@ def standardize_loc(lst_account_dic):
             result_lst.append(account)
     return result_lst
 
-# divide the accounts into two parts - low vs. high popularity
-
 
 def eva_popularity(lst_account_dic):
-    follower_lst = [dic["All followers"] for dic in lst_account_dic]
-    median_pop = int(statistics.median([int(i) for i in follower_lst]))
-    for account in lst_account_dic:
-        followers = int(account['All followers'])
-        if followers <= median_pop:
-            account['popularity'] = 'low'
-        else:
-            account['popularity'] = 'high'
-    return lst_account_dic
+    # divide the accounts into two parts - low vs. high popularity based on whether they are below or above the median value
+    ny_accounts = [
+        account for account in lst_account_dic if account['Location'] == "NY"]
+    dc_accounts = [
+        account for account in lst_account_dic if account['Location'] == "DC"]
+
+    for account_lst in [ny_accounts, dc_accounts]:
+        follower_lst = [dic["All followers"] for dic in account_lst]
+        median_pop = int(statistics.median([int(i) for i in follower_lst]))
+        for account in account_lst:
+            followers = int(account['All followers'])
+            if followers <= median_pop:
+                account['popularity'] = 'low'
+            else:
+                account['popularity'] = 'high'
+    result = ny_accounts + dc_accounts
+    return result
 
 
 def group_accounts(lst_account_dic):
+    # First, group accounts of the same location. Then, divide each location group into two groups of high and low popularity.
+    # return two dictionaries, ny and dc
     ny = {}
     ny['ny_low'] = []
     ny['ny_high'] = []
@@ -102,7 +115,7 @@ class Node():
 
         Parameters
         ----------
-        tree: Node 
+        tree: Node
             a tree object
 
         Returns
@@ -113,6 +126,13 @@ class Node():
         return not tree.children
 
     def print_tree(self):
+        '''print the tree 
+
+        Parameters
+        ----------
+        tree: Node
+            a tree object
+        '''
         spaces = ' ' * self.get_level() * 2
         prefix = spaces + "|__" if self.parent else ""
         if type(self.val) != str:
@@ -126,6 +146,18 @@ class Node():
             pass
 
     def search_accounts(self, conditions):
+        '''search the desired leaf (list of account names)
+
+        Parameters
+        ----------
+        conditions: list
+            list of location and popularity condition
+
+        Return 
+        ----------
+        list
+            a list of account names satisfying two given conditions 
+        '''
         loc = conditions[0]
         pop = conditions[1]
         if loc == "NY":
@@ -143,7 +175,7 @@ class Node():
 
 
 def build_account_tree(ny_accounts, dc_accounts):
-    root = Node("Popular Accounts")
+    root = Node("Accounts Followed by NYT editorial staff")
 
     ny = Node("NY")
     ny_low_pop = Node("Low Popularity")
@@ -174,6 +206,21 @@ def build_account_tree(ny_accounts, dc_accounts):
 
 
 def saveTree(tree, treeFile):
+    '''save a tree into a file
+
+    Parameters
+    ----------
+
+    tree: a Node object 
+        a tree to be saved 
+    treeFile: file handle
+        a file handle where we are going to load the tree from
+
+    Returns
+    -------
+    None 
+
+    '''
     tree_dic = {}
     root = tree.val
     tree_dic[root] = {}
@@ -197,7 +244,7 @@ def loadTree(treeFile):
 
     Returns
     -------
-    None or Node object 
+    None or Node object
 
     '''
     tree_dic = open_cache(treeFile)
@@ -226,6 +273,7 @@ if __name__ == "__main__":
     print("The number of accounts in NY/DC is", len(lst_account_dic))
 
     lst_account_dic = eva_popularity(lst_account_dic)
+
     ny, dc = group_accounts(lst_account_dic)
     root = build_account_tree(ny, dc)
     saveTree(root, "tree.json")
