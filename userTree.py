@@ -1,5 +1,6 @@
 import csv
 import statistics
+from utility import *
 
 
 def name_unknwon_loc(lst_account_dict):
@@ -96,6 +97,21 @@ class Node():
             p = p.parent
         return level
 
+    def isLeaf(tree):
+        '''check if a tree is a leaf
+
+        Parameters
+        ----------
+        tree: Node 
+            a tree object
+
+        Returns
+        -------
+        boolean
+            True if the tree is a leaf, False if the tree is not a leaf
+        '''
+        return not tree.children
+
     def print_tree(self):
         spaces = ' ' * self.get_level() * 2
         prefix = spaces + "|__" if self.parent else ""
@@ -157,43 +173,62 @@ def build_account_tree(ny_accounts, dc_accounts):
     return root
 
 
-def get_twitter_username(name, lst_account_dic):
-    for account in lst_account_dic:
-        if account['Name'] == name:
-            return account['Screen name']
-        else:
-            pass
+def saveTree(tree, treeFile):
+    tree_dic = {}
+    root = tree.val
+    tree_dic[root] = {}
+    for location in tree.children:
+        tree_dic[root][location.val] = {}
+        for pop in location.children:
+            pop_cate = pop.val
+            accounts = pop.children[0].val
+            tree_dic[root][location.val][pop_cate] = accounts
+    save_cache(tree_dic, treeFile)
 
 
-if __name__ == '__main__':
-    correct = ["yes", 'y', 'yup', 'sure']
-    location = ["NY", "DC", "Unknown"]
+def loadTree(treeFile):
+    '''load a tree from a file
 
+    Parameters
+    ----------
+
+    treeFile: file handle
+        a file handle where we are going to load the tree from
+
+    Returns
+    -------
+    None or Node object 
+
+    '''
+    tree_dic = open_cache(treeFile)
+    root_val = list(tree_dic.keys())[0]
+    root = Node(root_val)
+    for location in tree_dic[root_val].keys():
+        loc_node = Node(location)
+        root.add_child(loc_node)
+        for pop_cate in tree_dic[root_val][location]:
+            pop_node = Node(pop_cate)
+            loc_node.add_child(pop_node)
+            accounts = Node(tree_dic[root_val][location][pop_cate])
+            pop_node.add_child(accounts)
+    return root
+
+
+if __name__ == "__main__":
     filename = "300_Twitter_accounts.csv"
     with open(filename, 'r') as f:
         dict_reader = csv.DictReader(f)
         list_of_dict = list(dict_reader)
-    f.close()
 
-    # remove empty dict
-    list_of_dict = [item for item in list_of_dict if item]
-
+    # preprocess the account dic
     lst_account_dic = name_unknwon_loc(list_of_dict)
-
-    # print(get_location_list(lst_account_dic))
-
     lst_account_dic = standardize_loc(lst_account_dic)
     print("The number of accounts in NY/DC is", len(lst_account_dic))
-    # print(lst_account_dic[0])
+
     lst_account_dic = eva_popularity(lst_account_dic)
     ny, dc = group_accounts(lst_account_dic)
     root = build_account_tree(ny, dc)
+    saveTree(root, "tree.json")
 
-    print("printing the tree ...")
-    root.print_tree()
-    print(" ")
-
-    search_condition = ["DC", "high"]
-    print(root.search_accounts(search_condition))
-
-    # print(get_twitter_username("Ezra Klein", lst_account_dic))
+    root_loaded = loadTree("tree.json")
+    root_loaded.print_tree()
