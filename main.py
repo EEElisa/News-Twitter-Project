@@ -2,15 +2,8 @@ import Secrets
 from utility import *
 from userTree import *
 import requests
-from requests_oauthlib import OAuth1
-import os
-import json
-import nltk
 from nltk.corpus import stopwords
 import re
-from operator import itemgetter
-import networkx as nx
-from networkx.algorithms import community
 from flask import Flask, render_template, request
 
 app = Flask(__name__)
@@ -28,8 +21,6 @@ with open(filename, 'r') as f:
     list_of_dict = list(dict_reader)
 f.close()
 
-# remove empty dict
-list_of_dict = [item for item in list_of_dict if item]
 # preprocess the account dic
 lst_account_dic = name_unknwon_loc(list_of_dict)
 lst_account_dic = standardize_loc(lst_account_dic)
@@ -39,12 +30,8 @@ lst_account_dic = eva_popularity(lst_account_dic)
 ny, dc = group_accounts(lst_account_dic)
 root = build_account_tree(ny, dc)
 
-# print("printing the tree ...")
-# root.print_tree()
-# print(" ")
 
 num_cache_tweets = 100
-
 users_cache_filename = "userinfo_cache.json"
 users_cache_dic = open_cache(users_cache_filename)
 user_lookup_url = "https://api.twitter.com/2/users/by"
@@ -54,6 +41,7 @@ user_timeline_cache_dic = open_cache(user_timeline_cache_filename)
 
 nyt_cache_filename = "NYT_cache.json"
 nyt_cache_dic = open_cache(nyt_cache_filename)
+nyt_search_url = "https://api.nytimes.com/svc/search/v2/articlesearch.json"
 
 
 def bearer_oauth(r):
@@ -67,6 +55,18 @@ def bearer_oauth(r):
 
 
 def make_request(url, params):
+    '''Make a request to the Web API using the baseurl and params
+    Parameters
+    ----------
+    baseurl: string
+        The URL for the API endpoint
+    params: dictionary
+        A dictionary of param: param_value pairs
+    Returns
+    -------
+    string
+        the results of the query as a Python object loaded from JSON
+    '''
     response = requests.get(url, auth=bearer_oauth, params=params)
     print(response.status_code)
     if response.status_code != 200:
@@ -103,15 +103,40 @@ def make_request_with_cache(baseurl, params, CACHE_DICT, CACHE_FILENAME):
 
 
 def get_tweets(json_response):
+    '''Collect all the Tweets (text) from the given json response 
+    Parameters
+    ----------
+    json_response: json dictionary
+        The json dictionary that contains the result of the timeline search for the given account 
+    Returns
+    -------
+    list
+        the results of all searched Tweets 
+    int 
+        the length of the list (i.e. the number of Tweets collected)
+    '''
     tweets_dic = json_response['data']
     tweets_lst = []
     for t in tweets_dic:
         text = t['text']
         tweets_lst.append(text)
-    return tweets_lst
+    n_tweets = len(tweets_lst)
+    return tweets_lst, n_tweets
 
 
 def get_user_id(json_response, username):
+    '''get user id on Twitter given the username 
+    Parameters
+    ----------
+    json_response: json dictionary
+        the json dictionary that contains the account information for the given username 
+    username: string 
+        the username of a certain Twitter account 
+    Returns
+    -------
+    string
+        the user id of the given Twitter account  
+    '''
     user_info = json_response['data']
     for user in user_info:
         if user['username'] == username:
@@ -121,13 +146,27 @@ def get_user_id(json_response, username):
 
 
 def word_freq(tweets_lst, n):
+    '''find the top n most popular words that occur in the Tweets 
+    Parameters
+    ----------
+    tweets_lst: list
+        a list of Tweet texts 
+    n: int
+        the number of popular words requested  
+    Returns
+    -------
+    list
+        the list of top n words 
+    dictionary
+        the dictionary of word-occurrences pair 
+    '''
     stopword = stopwords.words("english")
     words_lst = []
     for tweet in tweets_lst:
         for word in tweet.split():
             word = word.lower()
             word = re.sub(r'[^\w\s]', '', word)
-            if word not in stopword and len(word) > 0:
+            if word not in stopword and len(word) > 0 and word != "rt":
                 words_lst.append(word)
             else:
                 pass
@@ -141,31 +180,19 @@ def word_freq(tweets_lst, n):
     return word_top_n, word_freq_dic
 
 
-def nodes_edges(username, wordlist):
-    node_names = wordlist.append(username)
-    edges = []
-    for word in wordlist:
-        edges.append(set([username, word]))
-    return node_names, edges
-
-
-def build_graph(nodes, edges):
-    G = nx.Graph()
-    G.add_nodes_from(nodes)
-    G.add_edges_from(edges)
-
-
-class TwitterUser:
-    def __init__(self, user_id="No ID", username="No User Name", name="No Name", tweets="No Tweets", top_words="No Words", json=None):
-        self.user_id = user_id
-        self.username = username
-        self.name = name
-        self.tweets = tweets
-        self.top_words = top_words
-        self.json = json
-
-
 def make_request_nyt(url, params):
+    '''Make a request to the NYT API using the baseurl and params
+    Parameters
+    ----------
+    baseurl: string
+        The URL for the API endpoint
+    params: dictionary
+        A dictionary of param: param_value pairs
+    Returns
+    -------
+    string
+        the results of the query as a Python object loaded from JSON
+    '''
     response = requests.get(url, params=params)
     return response.json()
 
@@ -180,6 +207,10 @@ def make_request_nyt_with_cache(baseurl, params, CACHE_DICT, CACHE_FILENAME):
         The URL for the API endpoint
     params: dictionary
         A dictionary of param: param_value pairs
+    CACHE_DICT: dictionary 
+        The dictionary for the cache file 
+    CACHE_FILENAME: string 
+        The file name for caching 
     Returns
     -------
     string
@@ -198,12 +229,24 @@ def make_request_nyt_with_cache(baseurl, params, CACHE_DICT, CACHE_FILENAME):
         return json_response
 
 
-def articles_headline(json_response):
+def articles_info(json_response):
+    '''extract article information from the json response loaded from json 
+    Parameters
+    ----------
+    json_response: json dictionary
+        the json dictionary that contains dictionaries of NYT articles 
+    Returns
+    -------
+    dictionary 
+        a dictionary that stores headline and url of each article  
+    '''
     articles_set = json_response['response']['docs']
-    headlines = []
+    articles_info = {}
     for article in articles_set:
-        headlines.append(article['headline']['main'])
-    return headlines
+        headline = article['headline']['main']
+        url = article['web_url']
+        articles_info[headline] = url
+    return articles_info
 
 
 @app.route('/')
@@ -213,6 +256,7 @@ def index():
 
 @app.route('/handle_form', methods=['POST'])
 def account_lst():
+    # get "location" and "popularity" from the user and return the corresponding account list by searching through the tree
     location = request.form["location"]
     popularity = request.form["popularity"]
     search_condition = [location, popularity]
@@ -223,12 +267,12 @@ def account_lst():
 
 @app.route('/get_tweets', methods=['POST'])
 def search_tweets():
+    # get "name" from user and use it to get the account's user id and the relevant Tweets using timeline searching API.
+    # return the list of frequent words along with the whole dictionary to the html for display
+    num_keywords = int(request.form['n_word'])
     account_idx = int(request.form['twitter_account'])
     account_name = lst_account_dic[account_idx]['Name']
     account = lst_account_dic[account_idx]['Screen name']
-
-    # return render_template('freq_words.html', account=account_name)
-
     user_query_para = {"usernames": account, "user.fields": "id"}
     user_info_json = make_request_with_cache(
         user_lookup_url, user_query_para, users_cache_dic, users_cache_filename)
@@ -240,43 +284,36 @@ def search_tweets():
                            "max_results": num_cache_tweets}
     user_timeline_json = make_request_with_cache(
         user_timeline_url, timeline_query_para, user_timeline_cache_dic, user_timeline_cache_filename)
-    user_tweets = get_tweets(user_timeline_json)  # a list of Tweets
+    user_tweets, n_tweets = get_tweets(user_timeline_json)  # a list of Tweets
+    word_top_n, word_freq_dic = word_freq(user_tweets, n=num_keywords)
+    return render_template('freq_words.html', account=account_name, n_tweets=n_tweets, word_list=word_top_n, word_dic=word_freq_dic, n_words=num_keywords)
 
-    word_top_n, word_freq_dic = word_freq(user_tweets, n=10)
-    return render_template('freq_words.html', account=account_name, word_list=word_top_n, word_dic=word_freq_dic)
 
-
-def main():
-    # the input is returned by get_twitter_username
-    '''
-    print(word_top_n)
-    node_names, edges = nodes_edges(input_username, word_top_n)
-
-    NUM_REQUESTED = 10
+@app.route('/get_nyt', methods=['POST'])
+def search_nyt():
+    # get search query (i.e. "keyword") from the user to search relevant NYT articles
+    # return the headlines and urls to url for display
+    search_query = request.form['keyword']
+    NUM_REQUESTED = int(request.form['quantity'])
     PAGE_NUM = NUM_REQUESTED // 10
     pages = []  # lst of page number, each page contains 10 results
     for i in range(PAGE_NUM):
         pages.append(str(i+1))
-
-    base_url_nyt = "https://api.nytimes.com/svc/search/v2/articlesearch.json"
-    query = "thanksgiving"
-
+    headlines = []
+    urls = []
+    articles_dic = {}
     for page in pages:
-        query_params = {'title': query,
+        query_params = {'title': search_query,
                         'document_type': "article", 'page': page, 'sort': 'relevance', 'api-key': NYT_keys}
         nyt_articles = make_request_nyt_with_cache(
-            base_url_nyt, query_params, CACHE_DICT, CACHE_FILENAME)
-
-    headlines = articles_headline(nyt_articles)
-    print(" ")
-    print("Printing the headlines of relevant articles...")
-    i = 1
-    for headline in headlines:
-        print(str(i) + ". "+headline)
-        i += 1
-    '''
+            nyt_search_url, query_params, nyt_cache_dic, nyt_cache_filename)
+        articles = articles_info(nyt_articles)
+        headlines.extend(list(articles.keys()))
+        urls.extend(list(articles.values()))
+        articles_dic.update(articles)
+    n_articles = len(headlines)
+    return render_template("search_nyt.html", headlines=headlines, uels=urls, articles_dic=articles_dic, n=n_articles, query=search_query)
 
 
 if __name__ == "__main__":
-    # main()
     app.run(debug=True)
